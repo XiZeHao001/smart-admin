@@ -1,0 +1,51 @@
+# 工作流名称
+name: Sync Upstream Master
+
+# 触发条件
+on:
+  # 1. 定时触发：使用 cron 语法，这里表示每天凌晨2点执行一次 (UTC时间)
+  schedule:
+    - cron: '0 2 * * *'
+  
+  # 2. 手动触发：允许你在 Actions 页面手动点击 "Run workflow" 来运行
+  workflow_dispatch:
+
+# 任务
+jobs:
+  sync:
+    # 运行环境
+    runs-on: ubuntu-latest
+    
+    # 任务步骤
+    steps:
+      # 步骤一：检出你的 Fork 仓库代码 (XiZeHao001/smart-admin)
+      - name: Checkout Your Fork
+        uses: actions/checkout@v4
+        with:
+          # 使用 GITHUB_TOKEN 进行认证，以便后续可以推送代码
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # 拉取所有历史记录，以便进行 rebase 操作
+          fetch-depth: 0
+
+      # 步骤二：设置上游仓库并同步代码
+      - name: Sync From Upstream
+        run: |
+          # 1. 配置 Git 用户信息，让提交记录显示是机器人操作
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # 2. 添加上游（原始）仓库的地址
+          git remote add upstream https://github.com/1024-lab/smart-admin.git
+          
+          # 3. 从上游仓库拉取所有分支的最新代码
+          git fetch upstream
+          
+          # 4. 切换到你自己仓库的主分支（master）
+          git checkout master
+          
+          # 5. 将上游仓库的 master 分支同步到你本地的 master 分支
+          # 这里使用 rebase 策略可以保持提交历史的整洁
+          git rebase upstream/master
+          
+          # 6. 将更新后的代码推送到你的 Fork 仓库的 master 分支
+          git push origin master --force-with-lease
